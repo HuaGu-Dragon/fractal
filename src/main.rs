@@ -8,15 +8,12 @@ const X_AXIS: Axis<f64> = Axis {
     min: -2.0,
 };
 const Y_AXIS: Axis<f64> = Axis { max: 1., min: -1. };
-const RATIO: f64 = X_AXIS.range() / Y_AXIS.range();
+const RATIO: f64 = (X_AXIS.max - X_AXIS.min) / (Y_AXIS.max - Y_AXIS.min);
 
 const WIDTH: u32 = 800;
 const HEIGHT: u32 = (WIDTH as f64 / RATIO) as u32;
 
 const MAX_ITER: usize = 1000;
-
-const BASE_COLOR: [u8; 3] = [200, 200, 230];
-const MAX_COLOR: [u8; 3] = [44, 60, 80];
 
 fn main() {
     let image = ImageBuffer::from_fn(WIDTH, HEIGHT, |x, y| {
@@ -43,16 +40,18 @@ fn iter_count(c: Complex<f64>) -> usize {
     return MAX_ITER;
 }
 
-fn calc_color(count: usize) -> [u8; 3] {
+fn calc_color(count: usize) -> [f32; 3] {
+    const IN_COLOR: [f32; 3] = [1., 1., 1.];
+    const OUT_COLOR: [f32; 3] = [0., 0., 0.];
     if count == MAX_ITER {
-        MAX_COLOR
+        IN_COLOR
     } else {
-        let ratio = dbg!(count as f64 / MAX_ITER as f64);
+        let ratio = dbg!(count as f32 / MAX_ITER as f32);
 
         [
-            ((BASE_COLOR[0] - MAX_COLOR[0]) as f64 * ratio + BASE_COLOR[0] as f64) as u8,
-            ((MAX_COLOR[1] - BASE_COLOR[1]) as f64 * ratio + BASE_COLOR[1] as f64) as u8,
-            ((MAX_COLOR[2] - BASE_COLOR[2]) as f64 * ratio + BASE_COLOR[2] as f64) as u8,
+            (IN_COLOR[0] - OUT_COLOR[0]) * ratio + OUT_COLOR[0],
+            (IN_COLOR[1] - OUT_COLOR[1]) * ratio + OUT_COLOR[1],
+            (IN_COLOR[2] - OUT_COLOR[2]) * ratio + OUT_COLOR[2],
         ]
     }
 }
@@ -69,7 +68,7 @@ where
     T: Sub<Output = T>,
     T: Mul<Output = T>,
 {
-    const fn range(&self) -> T {
+    fn range(&self) -> T {
         self.max - self.min
     }
 
