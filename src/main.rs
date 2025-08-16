@@ -1,7 +1,13 @@
-use std::ops::{Add, Mul, Sub};
+use std::{
+    ops::{Add, Mul, Sub},
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
+};
 
 use image::ImageBuffer;
-use num::{Complex, complex::ComplexFloat};
+use num::Complex;
 
 const X_AXIS: Axis<f64> = Axis {
     max: 1.0,
@@ -13,17 +19,17 @@ const RATIO: f64 = (X_AXIS.max - X_AXIS.min) / (Y_AXIS.max - Y_AXIS.min);
 const WIDTH: u32 = 10000;
 const HEIGHT: u32 = (WIDTH as f64 / RATIO) as u32;
 
-const MAX_ITER: u16 = 100;
+const MAX_ITER: u16 = 10000;
 
 fn main() {
-    let i = std::sync::Arc::new(std::sync::Mutex::new(0));
+    let i = Arc::new(AtomicUsize::new(0));
 
     std::thread::spawn({
         let i = i.clone();
+        let total = (WIDTH * HEIGHT) as usize;
         move || loop {
             std::thread::sleep(std::time::Duration::from_secs(1));
-            let count = *i.lock().unwrap();
-            let total = WIDTH * HEIGHT;
+            let count = i.fetch_add(1, Ordering::Relaxed);
             let percent = (count as f64 / total as f64) * 100.0;
             print!("Progress: {percent:.2}% ({count}/{total})");
             if count >= total {
@@ -34,14 +40,16 @@ fn main() {
         }
     });
 
+    let inv_w = 1.0 / WIDTH as f64;
+    let inv_h = 1.0 / HEIGHT as f64;
     let image = ImageBuffer::from_par_fn(WIDTH, HEIGHT, |x, y| {
-        let cx = X_AXIS.map(x as f64 / WIDTH as f64);
-        let cy = Y_AXIS.map(y as f64 / HEIGHT as f64);
+        let cx = X_AXIS.map(x as f64 * inv_w);
+        let cy = Y_AXIS.map(y as f64 * inv_h);
 
         let c = Complex::new(cx, cy);
         let count = iter_count(c);
 
-        *i.lock().unwrap() += 1;
+        i.fetch_add(1, Ordering::Relaxed);
 
         image::Rgb(calc_color(count))
     });
@@ -52,7 +60,7 @@ fn main() {
 fn iter_count(c: Complex<f64>) -> usize {
     let mut z = Complex::new(0.0, 0.0);
     for i in 0..MAX_ITER {
-        if z.abs() > 2.0 {
+        if z.norm_sqr() > 4.0 {
             return i as usize;
         }
         z = z * z + c;
@@ -66,7 +74,8 @@ fn calc_color(count: usize) -> [u16; 3] {
     } else {
         let t = (count as f64 / MAX_ITER as f64).powf(0.4);
         let cycles = 5.0;
-        let h = 360.0 * t * cycles % 360.0;
+        let h = 360.0 * t * cycles;
+        let h = h.min(360.0);
         let s = 1.0;
         let v = 1.0;
 
@@ -107,6 +116,7 @@ where
         self.max - self.min
     }
 
+    #[inline]
     fn map(&self, value: T) -> T {
         self.min + value * self.range()
     }
