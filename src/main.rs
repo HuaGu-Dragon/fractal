@@ -7,7 +7,7 @@ use std::{
 };
 
 use image::ImageBuffer;
-use num::Complex;
+use num::{Complex, complex::ComplexFloat};
 
 const X_AXIS: Axis<f64> = Axis {
     max: 1.0,
@@ -47,41 +47,37 @@ fn main() {
         let cy = Y_AXIS.map(y as f64 * inv_h);
 
         let c = Complex::new(cx, cy);
-        let count = iter_count(c);
+        let mu = iter_smooth(c);
 
         i.fetch_add(1, Ordering::Relaxed);
 
-        image::Rgb(calc_color(count))
+        image::Rgb(calc_color(mu))
     });
 
     image.save("mandelbrot.png").expect("Failed to save image");
 }
 
-fn iter_count(c: Complex<f64>) -> usize {
+fn iter_smooth(c: Complex<f64>) -> f64 {
+    let mut i = 0;
     let mut z = Complex::new(0.0, 0.0);
-    for i in 0..MAX_ITER {
+    while i < MAX_ITER {
         if z.norm_sqr() > 4.0 {
-            return i as usize;
+            return i as f64 + 1.0 - (z.norm_sqr().ln() / 2.).ln() / std::f64::consts::LN_2;
         }
         z = z * z + c;
+        i += 1;
     }
-    return MAX_ITER as usize;
+    MAX_ITER as f64
 }
 
-fn calc_color(count: usize) -> [u16; 3] {
-    if count == MAX_ITER as usize {
+fn calc_color(mu: f64) -> [u16; 3] {
+    if mu >= MAX_ITER as f64 {
         [0, 0, 0]
     } else {
-        let t = (count as f64 / MAX_ITER as f64).powf(0.4);
-        let cycles = 5.0;
-        let h = 360.0 * t * cycles;
-        let h = h.min(360.0);
-        let s = 1.0;
-        let v = 1.0;
-
-        let c = v * s;
+        let t = (mu / MAX_ITER as f64).powf(0.4);
+        let h = 360.0 * t;
+        let c = 1.0;
         let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
-        let m = v - c;
 
         let (r1, g1, b1) = match h as u32 {
             0..=59 => (c, x, 0.0),
@@ -93,9 +89,9 @@ fn calc_color(count: usize) -> [u16; 3] {
             _ => (0.0, 0.0, 0.0),
         };
 
-        let r = ((r1 + m) * 65535.0) as u16;
-        let g = ((g1 + m) * 65535.0) as u16;
-        let b = ((b1 + m) * 65535.0) as u16;
+        let r = (r1 * 65535.0) as u16;
+        let g = (g1 * 65535.0) as u16;
+        let b = (b1 * 65535.0) as u16;
         [r, g, b]
     }
 }
