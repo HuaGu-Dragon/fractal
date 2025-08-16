@@ -2,41 +2,29 @@ use image::ImageBuffer;
 use num::{Complex, complex::ComplexFloat};
 
 const X_AXIS: Axis = Axis {
-    max: 2.0,
+    max: 1.0,
     min: -2.0,
 };
-const Y_AXIS: Axis = Axis {
-    max: 1.5,
-    min: -1.5,
-};
+const Y_AXIS: Axis = Axis { max: 1., min: -1. };
 const RATIO: f64 = X_AXIS.range() / Y_AXIS.range();
 
 const WIDTH: u32 = 800;
 const HEIGHT: u32 = (WIDTH as f64 / RATIO) as u32;
 
-const MAX_ITER: usize = 100;
+const MAX_ITER: usize = 1000;
 
 const BASE_COLOR: [u8; 3] = [0, 0, 0];
 const MAX_COLOR: [u8; 3] = [255, 255, 255];
 
 fn main() {
-    let mut pixels = vec![[0u8; 3]; (WIDTH * HEIGHT) as usize];
-
-    for y in 0..HEIGHT {
-        for x in 0..WIDTH {
-            let cx = X_AXIS.map(x as f64 / WIDTH as f64);
-            let cy = Y_AXIS.map(y as f64 / HEIGHT as f64);
-
-            let c = Complex::new(cx, cy);
-            let count = iter_count(c);
-
-            pixels[(y * WIDTH + x) as usize] = calc_color(count);
-        }
-    }
-
     let image = ImageBuffer::from_fn(WIDTH, HEIGHT, |x, y| {
-        let pixel = pixels[(y * WIDTH + x) as usize];
-        image::Rgb(pixel)
+        let cx = X_AXIS.map(x as f64 / WIDTH as f64);
+        let cy = Y_AXIS.map(y as f64 / HEIGHT as f64);
+
+        let c = Complex::new(cx, cy);
+        let count = iter_count(c);
+
+        image::Rgb(calc_color(count))
     });
 
     image.save("mandelbrot.png").expect("Failed to save image");
