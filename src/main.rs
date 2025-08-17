@@ -26,16 +26,16 @@ enum Commands {
         #[arg(short, long, default_value_t = 100)]
         iter: usize,
 
-        #[arg(short, long, default_value_t = -2.0)]
+        #[arg(long, default_value_t = -2.0)]
         from_x: f64,
 
-        #[arg(short, long, default_value_t = -1.0)]
+        #[arg(long, default_value_t = -1.0)]
         from_y: f64,
 
-        #[arg(short, long, default_value_t = 1.0)]
+        #[arg(long, default_value_t = 1.0)]
         to_x: f64,
 
-        #[arg(short, long, default_value_t = 1.0)]
+        #[arg(long, default_value_t = 1.0)]
         to_y: f64,
 
         #[arg(short, long, default_value_t = 400)]
@@ -81,6 +81,7 @@ fn main() {
                     let count = i.load(Ordering::Relaxed);
                     let percent = (count as f64 / total as f64) * 100.0;
                     print!("Progress: {percent:.2}% ({count}/{total})");
+                    std::io::Write::flush(&mut std::io::stdout()).unwrap();
                     if count >= total {
                         break;
                     }
