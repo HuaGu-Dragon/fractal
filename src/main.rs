@@ -8,6 +8,7 @@ use std::{
 
 use image::ImageBuffer;
 use num::{Complex, complex::ComplexFloat};
+use rayon::prelude::*;
 
 const X_AXIS: Axis<f64> = Axis {
     max: 1.0,
@@ -45,6 +46,8 @@ fn main() {
         }
     });
 
+    let color_table = init_color_table();
+
     let inv_w = 1.0 / WIDTH as f64;
     let inv_h = 1.0 / HEIGHT as f64;
     let image = ImageBuffer::from_par_fn(WIDTH, HEIGHT, |x, y| {
@@ -56,7 +59,7 @@ fn main() {
 
         i.fetch_add(1, Ordering::Relaxed);
 
-        image::Rgb(calc_color(mu))
+        image::Rgb(color_table[mu as usize])
     });
 
     image.save("mandelbrot.png").expect("Failed to save image");
@@ -87,6 +90,13 @@ fn iter_smooth(c: Complex<f64>) -> f64 {
         }
     }
     MAX_ITER as f64
+}
+
+fn init_color_table() -> Vec<[u16; 3]> {
+    (0..=MAX_ITER)
+        .into_par_iter()
+        .map(|i| calc_color(i as f64))
+        .collect()
 }
 
 #[inline(always)]
