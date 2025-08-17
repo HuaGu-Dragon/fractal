@@ -22,10 +22,10 @@ const Y_AXIS: Axis<f64> = Axis {
 };
 const RATIO: f64 = (X_AXIS.range) / (Y_AXIS.range);
 
-const WIDTH: u32 = 10000;
+const WIDTH: u32 = 40000;
 const HEIGHT: u32 = (WIDTH as f64 / RATIO) as u32;
 
-const MAX_ITER: u16 = 10000;
+const MAX_ITER: usize = 10000;
 
 fn main() {
     let i = Arc::new(AtomicUsize::new(0));
@@ -34,8 +34,8 @@ fn main() {
         let i = i.clone();
         let total = (WIDTH * HEIGHT) as usize;
         move || loop {
-            std::thread::sleep(std::time::Duration::from_secs(1));
-            let count = i.fetch_add(1, Ordering::Relaxed);
+            std::thread::sleep(std::time::Duration::from_secs(2));
+            let count = i.load(Ordering::Relaxed);
             let percent = (count as f64 / total as f64) * 100.0;
             print!("Progress: {percent:.2}% ({count}/{total})");
             if count >= total {
@@ -46,7 +46,12 @@ fn main() {
         }
     });
 
-    let color_table = init_color_table();
+    let color_table: Vec<[u16; 3]> = {
+        (0..=MAX_ITER)
+            .into_par_iter()
+            .map(|i| calc_color(i as f64))
+            .collect()
+    };
 
     let inv_w = 1.0 / WIDTH as f64;
     let inv_h = 1.0 / HEIGHT as f64;
@@ -62,7 +67,7 @@ fn main() {
         image::Rgb(color_table[mu as usize])
     });
 
-    image.save("mandelbrot.png").expect("Failed to save image");
+    image.save("mandelbrot1.png").expect("Failed to save image");
 }
 
 #[inline(always)]
@@ -90,13 +95,6 @@ fn iter_smooth(c: Complex<f64>) -> f64 {
         }
     }
     MAX_ITER as f64
-}
-
-fn init_color_table() -> Vec<[u16; 3]> {
-    (0..=MAX_ITER)
-        .into_par_iter()
-        .map(|i| calc_color(i as f64))
-        .collect()
 }
 
 #[inline(always)]
