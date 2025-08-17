@@ -12,9 +12,14 @@ use num::{Complex, complex::ComplexFloat};
 const X_AXIS: Axis<f64> = Axis {
     max: 1.0,
     min: -2.0,
+    range: 3.0,
 };
-const Y_AXIS: Axis<f64> = Axis { max: 1., min: -1. };
-const RATIO: f64 = (X_AXIS.max - X_AXIS.min) / (Y_AXIS.max - Y_AXIS.min);
+const Y_AXIS: Axis<f64> = Axis {
+    max: 1.,
+    min: -1.,
+    range: 2.,
+};
+const RATIO: f64 = (X_AXIS.range) / (Y_AXIS.range);
 
 const WIDTH: u32 = 10000;
 const HEIGHT: u32 = (WIDTH as f64 / RATIO) as u32;
@@ -57,19 +62,34 @@ fn main() {
     image.save("mandelbrot.png").expect("Failed to save image");
 }
 
+#[inline(always)]
 fn iter_smooth(c: Complex<f64>) -> f64 {
     let mut i = 0;
+    let mut period = 0;
+
     let mut z = Complex::new(0.0, 0.0);
+    let mut z_prev = z;
+
     while i < MAX_ITER {
         if z.norm_sqr() > 4.0 {
             return i as f64 + 1.0 - (z.norm_sqr().ln() / 2.).ln() / std::f64::consts::LN_2;
         }
         z = z * z + c;
         i += 1;
+
+        period += 1;
+        if period > 20 {
+            if (z - z_prev).norm_sqr() < 1e-12 {
+                return MAX_ITER as f64;
+            }
+            z_prev = z;
+            period = 0;
+        }
     }
     MAX_ITER as f64
 }
 
+#[inline(always)]
 fn calc_color(mu: f64) -> [u16; 3] {
     if mu >= MAX_ITER as f64 {
         [0, 0, 0]
@@ -96,9 +116,12 @@ fn calc_color(mu: f64) -> [u16; 3] {
     }
 }
 
+#[allow(unused)]
+#[derive(Debug, Clone, Copy)]
 struct Axis<T> {
     max: T,
     min: T,
+    range: T,
 }
 
 impl<T> Axis<T>
@@ -108,12 +131,8 @@ where
     T: Sub<Output = T>,
     T: Mul<Output = T>,
 {
-    fn range(&self) -> T {
-        self.max - self.min
-    }
-
     #[inline]
     fn map(&self, value: T) -> T {
-        self.min + value * self.range()
+        self.min + value * self.range
     }
 }
